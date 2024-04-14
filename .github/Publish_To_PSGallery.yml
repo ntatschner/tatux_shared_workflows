@@ -15,7 +15,7 @@ publish_module:
   runs-on: windows-latest
   strategy:
     matrix:
-      module_path: ${{ matrix.module_path.split(',') }}
+      module_path: ${{ inputs.module_path.split(',') }}
   steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -23,6 +23,9 @@ publish_module:
         repository: ${{ github.event.repository.full_name }}
 
     - name: Test If Module Path Exists
+      with:
+        module_path: ${{ matrix.module_path }}
+        api_key: ${{ secrets.api_key }}
       id: test
       shell: pwsh
       run: |
@@ -48,6 +51,9 @@ publish_module:
 
 
     - name: Test and Publish modules
+      with:
+        module_path: ${{ matrix.module_path }}
+        api_key: ${{ secrets.api_key }}
       if: steps.test.outcome == 'success'
       id: version
       run: |
