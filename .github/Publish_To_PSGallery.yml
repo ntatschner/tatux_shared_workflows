@@ -3,6 +3,69 @@ name: Pubish to PSGallery
 on:
   workflow_call:
     inputs:
-      type: string
-      name: Module_Path
-      
+      module_path:
+        types: string
+        required: true
+    secrets:  
+      api_key:
+        required: true
+
+jobs:
+publish_module:
+  runs-on: windows-latest
+  strategy:
+    matrix:
+      module_path: ${{ matrix.module_path.split(',') }}
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ github.event.repository.full_name }}
+
+    - name: Test If Module Path Exists
+      id: test
+      shell: pwsh
+      run: |
+        if (Test-Path -Path ${{ matrix.module_path }}) {
+          $modulePath = ${{ matrix.module_path }}
+          Write-Output "Module path: $modulePath exists"
+          Write-Output "Testing if it has a .psd1 file"
+          $psd1 = Get-ChildItem -Path $modulePath -Filter *.psd1
+          if ($psd1) {
+            Write-Output "Found .psd1 file: $($psd1.Name)."
+            Write-Output "Testing if us is valid."
+            try {
+            Test-ModuleManifest -Path $psd1.FullName -ErrorAction Stop
+            } catch {
+              throw "Module path: $modulePath does not contain a valid .psd1 file.`nError: $_"
+            }
+          } else {
+            throw "Module path: $modulePath does not contain a .psd1 file"
+          }
+        } else {
+          throw "Module path: ${{ matrix.module_path }} does not exist"
+        }
+
+
+    - name: Test and Publish modules
+      if: steps.test.outcome == 'success'
+      id: version
+      run: |
+        $Module = Get-Item -Path ${{ matrix.module_path }}
+        $ModuleName = $module.BaseName
+        $repoVersion = (Import-PowerShellDataFile -Path "$($Module.FullName)\$($Module.BaseName).psd1").ModuleVersion
+        try {
+          $publishedVersion = (Find-Module -Name $ModuleName -ErrorAction Stop).Version
+        } catch {
+          Write-Output "Module $ModuleName not found in PSGallery, creating new module version $repoVersion"
+        }
+        if ($repoVersion -gt $publishedVersion -or $publishedVersion -eq $null) {
+          Write-Output "Publishing module $ModuleName version $repoVersion"
+          try {
+            Publish-PSResource -Path $($Module.FullName) -Repository PSGallery -ApiKey ${{ secrets.API_KEY }} -ErrorAction Stop
+          } catch {
+            Write-Error "Failed to publish module $ModuleName. Error: $_"
+          }
+        } else {
+          Write-Output "Published version ($publishedVersion) matches repo version ($repoVersion)"
+        }
