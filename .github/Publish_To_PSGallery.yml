@@ -1,0 +1,8 @@
+name: Pubish to PSGallery
+
+on:
+  workflow_call:
+    inputs:
+      type: string
+      name: Module_Path
+      
