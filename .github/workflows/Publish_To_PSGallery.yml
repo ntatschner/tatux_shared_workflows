@@ -24,14 +24,14 @@ jobs:
           if ($modulePaths -eq $null) {
             throw "No module paths provided"
           }
-          echo "module_paths_split=$($modulePaths)" >> $env:GITHUB_OUTPUT
+          echo "module_paths_split=$($modulePaths -Join ',')" >> $env:GITHUB_OUTPUT
   publish_module:
     runs-on: windows-latest
     needs: SetUp
     if: ${{ needs.SetUp.outputs.module_paths_split != null }}
     strategy:
       matrix:
-        module_path: ${{ needs.SetUp.outputs.module_paths_split }}
+        module_path: ${{ fromJson(needs.SetUp.outputs.module_paths_split) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
