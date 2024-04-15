@@ -9,21 +9,21 @@ on:
 
 jobs:
   SetUp:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     outputs:
-      module_path_split: ${{ steps.split.outputs.module_paths_split }}
+      module_paths_split: ${{ steps.split.outputs.module_paths_split }}
     steps:
       - name: Split Module Paths
         id: split
         run: |
-          $modulePaths = ${{ inputs.module_paths }} -split ','
-          echo "module_path_splits=$modulePaths" >> $GITHUB_OUTPUT
+          echo "module_paths_split=$(jq 'split(",")' -Rc <(echo '${{ inputs.module_paths }}'))" >> $GITHUB_OUTPUT
   PSScriptAnalyzer:
     runs-on: windows-latest
     needs: SetUp
+    if: ${{ needs.SetUp.outputs.module_paths_split != null }}
     strategy:
       matrix:
-        module_path: ${{ needs.SetUp.outputs.module_paths_split }}
+        module_path: ${{ fromJson(needs.SetUp.outputs.module_paths_split) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
