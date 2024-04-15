@@ -20,10 +20,14 @@ jobs:
         id: split
         run: |
           $modulePaths = ${{ inputs.module_path }} -split ','
+          if ($modulePaths -eq $null) {
+            throw "No module paths provided"
+          }
           echo "module_path_split=$modulePaths" >> $GITHUB_OUTPUT
   publish_module:
     runs-on: windows-latest
     needs: SetUp
+    if: ${{ needs.SetUp.outputs.module_path_split != null }}
     strategy:
       matrix:
         module_path: ${{ needs.SetUp.outputs.module_path_split }}
