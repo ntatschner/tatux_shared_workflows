@@ -12,19 +12,16 @@ on:
 
 jobs:
   SetUp:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     outputs:
       module_paths_split: ${{ steps.split.outputs.module_paths_split }}
     steps:
       - name: Split Module Paths
         id: split
         run: |
-          Write-Output "Input module path: ${{ inputs.module_paths }}"
-          $modulePaths = "${{ inputs.module_paths }}" -split ','
-          if ($modulePaths -eq $null) {
-            throw "No module paths provided"
-          }
-          echo "module_paths_split=$($modulePaths -Join ',')" >> $env:GITHUB_OUTPUT
+          IFS=', ' read -r -a module_paths <<< "${{ inputs.module_paths }}"
+          echo "::set-output name=module_paths::$(echo "${module_paths[@]}" | jq -R -s -c 'split(" "))'"
+          echo "module_paths_split=$(echo "${module_paths[@]}" | jq -R -s -c 'split(" "))" >> $GITHUB_OUTPUT
   publish_module:
     runs-on: windows-latest
     needs: SetUp
