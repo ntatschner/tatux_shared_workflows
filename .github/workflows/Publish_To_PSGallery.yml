@@ -24,7 +24,7 @@ jobs:
           if ($modulePaths -eq $null) {
             throw "No module paths provided"
           }
-          echo "module_path_split=$modulePaths" >> $GITHUB_OUTPUT
+          echo "module_paths_split=$modulePaths" >> $GITHUB_OUTPUT
   publish_module:
     runs-on: windows-latest
     needs: SetUp
