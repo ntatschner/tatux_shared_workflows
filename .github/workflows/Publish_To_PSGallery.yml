@@ -73,7 +73,7 @@ jobs:
         id: required_modules
         shell: pwsh
         run: |
-            $ModulePath = Get-item -Path "${{ inputs.module_path }}"
+            $ModulePath = Get-item -Path "${{ matrix.module_path }}"
             $ModuleName = $ModulePath.Name
             Write-Output "Installing any required modules for $ModuleName"
             $RequiredModules = (Import-PowerShellDataFile -Path "$($ModulePath.FullName)\$($ModuleName).psd1").RequiredModules
@@ -90,7 +90,7 @@ jobs:
         id: pester
         shell: pwsh
         run: |
-            $ModulePath = Get-item -Path ${{ inputs.module_path }}
+            $ModulePath = Get-item -Path ${{ matrix.module_path }}
             $ModuleName = $ModulePath.Name
             Write-Output "Running Pester Tests for $ModuleName"
             Write-Output "Running Pester Tests for Public Functions"
@@ -117,7 +117,7 @@ jobs:
         run: |
             $errors = @()
             $warnings = @()
-            $ModulePath = Get-item -Path ${{ inputs.module_path }}
+            $ModulePath = Get-item -Path ${{ matrix.module_path }}
             $ModuleName = $_.Name
             Write-Output "Running PSScriptAnalyzer Tests for $ModuleName"
             Write-Output "Running Tests for Public Functions"
