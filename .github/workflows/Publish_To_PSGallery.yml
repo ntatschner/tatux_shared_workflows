@@ -19,6 +19,7 @@ jobs:
       - name: Split Module Paths
         id: split
         run: |
+          Write-Output "Input module path: ${{ inputs.module_path }}"
           $modulePaths = ${{ inputs.module_path }} -split ','
           if ($modulePaths -eq $null) {
             throw "No module paths provided"
