@@ -3,39 +3,56 @@ name: PowerShell Testing
 on:
   workflow_call:
     inputs:
-      module_paths:
+      module_path:
         type: string
         required: true
 
 jobs:
-  SetUp:
-    runs-on: ubuntu-latest
-    outputs:
-      module_paths_split: ${{ steps.split.outputs.module_paths_split }}
-    steps:
-      - name: Split Module Paths
-        id: split
-        run: |
-          echo "module_paths_split=$(jq 'split(",")' -Rc <(echo '${{ inputs.module_paths }}'))" >> $GITHUB_OUTPUT
   PSScriptAnalyzer:
     runs-on: windows-latest
-    needs: SetUp
-    if: ${{ needs.SetUp.outputs.module_paths_split != null }}
-    strategy:
-      matrix:
-        module_path: ${{ fromJson(needs.SetUp.outputs.module_paths_split) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           repository: ${{ github.event.repository.full_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Test Module Paths
-        id: path_test
+
+      - name: Setup PowerShell module cache
+        id: cacher
+        uses: actions/cache@v3
+        with:
+            path: "~/.local/share/powershell/Modules"
+            key: ${{ runner.os }}-PowershellTesting
+
+      - name: Install required testing PowerShell modules
+        if: steps.cacher.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
-          if (Test-Path -Path ${{ matrix.module_path }}) {
-            $modulePath = ${{ matrix.module_path }}
+            Set-PSRepository PSGallery -InstallationPolicy Trusted
+            Install-Module PSScriptAnalyzer -ErrorAction Stop
+
+      - name: Install any required modules
+        id: required_modules
+        shell: pwsh
+        run: |
+            $ModulePath = Get-item -Path "${{ inputs.module_path }}"
+            $ModuleName = $ModulePath.Name
+            Write-Output "Installing any required modules for $ModuleName"
+            $RequiredModules = (Import-PowerShellDataFile -Path "$($ModulePath.FullName)\$($ModuleName).psd1").RequiredModules
+            if ($RequiredModules) {
+                foreach ($module in $RequiredModules) {
+                    Install-Module -Name $module.Name -RequiredVersion $module.RequiredVersion -Force -ErrorAction Stop
+                }
+            } else {
+                Write-Output "No required modules found."
+            }
+      - name: Test Module Path
+        if: steps.required_modules.outcome == 'success'
+        id: module_test
+        shell: pwsh
+        run: |
+          if (Test-Path -Path ${{ inputs.module_path }}) {
+            $modulePath = "${{ inputs.module_path }}""
             Write-Output "Module path: $modulePath exists"
             Write-Output "Testing if it has a .psd1 file"
             $psd1 = Get-ChildItem -Path $modulePath -Filter *.psd1
@@ -43,7 +60,7 @@ jobs:
               Write-Output "Found .psd1 file: $($psd1.Name)."
               Write-Output "Testing if us is valid."
               try {
-              Test-ModuleManifest -Path $psd1.FullName -ErrorAction Stop
+                Test-ModuleManifest -Path $psd1.FullName -ErrorAction Stop
               } catch {
                 throw "Module path: $modulePath does not contain a valid .psd1 file.`nError: $_"
               }
@@ -51,26 +68,13 @@ jobs:
               throw "Module path: $modulePath does not contain a .psd1 file"
             }
           } else {
-            throw "Module path: ${{ matrix.module_path }} does not exist"
+            throw "Module path: ${{ inputs.module_path }} does not exist"
           }
-      - name: Setup PowerShell module cache
-        if: steps.path_test.outcome == 'success'
-        id: cacher
-        uses: actions/cache@v3
-        with:
-            path: "~/.local/share/powershell/Modules"
-            key: ${{ runner.os }}-PSScriptAnalyzer
-      - name: Install required PowerShell modules
-        if: steps.cacher.outputs.cache-hit != 'true' && steps.path_test.outcome == 'success'
-        shell: pwsh
-        run: |
-            Set-PSRepository PSGallery -InstallationPolicy Trusted
-            Install-Module PSScriptAnalyzer -ErrorAction Stop
 
       - name: Run Pester Tests
-        if: steps.path_test.outcome == 'success'
+        if: steps.module_test.outcome == 'success'
         run: |
-            $ModulePath = Get-item -Path ${{ matrix.module_path }}
+            $ModulePath = Get-item -Path ${{ inputs.module_path }}
             $ModuleName = $ModulePath.Name
             Write-Output "Running Pester Tests for $ModuleName"
             Write-Output "Running Pester Tests for Public Functions"
@@ -80,12 +84,12 @@ jobs:
             
 
       - name: Lint with PSScriptAnalyzer
-        if: steps.path_test.outcome == 'success'
+        if: steps.module_test.outcome == 'success'
         shell: pwsh
         run: |
             $errors = @()
             $warnings = @()
-            $ModulePath = Get-item -Path ${{ matrix.module_path }}
+            $ModulePath = Get-item -Path ${{ inputs.module_path }}
             $ModuleName = $_.Name
             Write-Output "Running PSScriptAnalyzer Tests for $ModuleName"
             Write-Output "Running Tests for Public Functions"
