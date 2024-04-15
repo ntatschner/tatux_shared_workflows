@@ -3,7 +3,7 @@ name: PowerShell Testing
 on:
   workflow_call:
     inputs:
-      module_path:
+      module_paths:
         type: string
         required: true
 
@@ -11,19 +11,19 @@ jobs:
   SetUp:
     runs-on: windows-latest
     outputs:
-      module_path_split: ${{ steps.split.outputs.module_path_split }}
+      module_path_split: ${{ steps.split.outputs.module_paths_split }}
     steps:
       - name: Split Module Paths
         id: split
         run: |
-          $modulePaths = ${{ inputs.module_path }} -split ','
-          echo "module_path_split=$modulePaths" >> $GITHUB_OUTPUT
+          $modulePaths = ${{ inputs.module_paths }} -split ','
+          echo "module_path_splits=$modulePaths" >> $GITHUB_OUTPUT
   PSScriptAnalyzer:
     runs-on: windows-latest
     needs: SetUp
     strategy:
       matrix:
-        module_path: ${{ needs.SetUp.outputs.module_path_split }}
+        module_path: ${{ needs.SetUp.outputs.module_paths_split }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
