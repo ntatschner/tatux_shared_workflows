@@ -4,18 +4,29 @@ on:
   workflow_call:
     inputs:
       module_path:
-        types: string
+        type: string
         required: true
     secrets:  
       api_key:
         required: true
 
 jobs:
+  SetUp:
+    runs-on: windows-latest
+    outputs:
+      module_path_split: ${{ steps.split.outputs.module_path_split }}
+    steps:
+      - name: Split Module Paths
+        id: split
+        run: |
+          $modulePaths = ${{ inputs.module_path }} -split ','
+          echo "module_path_split=$modulePaths" >> $GITHUB_OUTPUT
   publish_module:
     runs-on: windows-latest
+    needs: SetUp
     strategy:
       matrix:
-        module_path: ${{ inputs.module_path.split(',') }}
+        module_path: ${{ needs.SetUp.outputs.module_path_split }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -23,9 +34,6 @@ jobs:
           repository: ${{ github.event.repository.full_name }}
 
       - name: Test If Module Path Exists
-        with:
-          module_path: ${{ matrix.module_path }}
-          api_key: ${{ secrets.api_key }}
         id: test
         shell: pwsh
         run: |
@@ -51,9 +59,6 @@ jobs:
 
 
       - name: Test and Publish modules
-        with:
-          module_path: ${{ matrix.module_path }}
-          api_key: ${{ secrets.api_key }}
         if: steps.test.outcome == 'success'
         id: version
         run: |
