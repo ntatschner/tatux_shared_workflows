@@ -20,7 +20,7 @@ jobs:
         id: split
         run: |
           Write-Output "Input module path: ${{ inputs.module_paths }}"
-          $modulePaths = ${{ inputs.module_paths }} -split ','
+          $modulePaths = "${{ inputs.module_paths }}" -split ','
           if ($modulePaths -eq $null) {
             throw "No module paths provided"
           }
