@@ -68,7 +68,7 @@ jobs:
           if ($repoVersion -gt $publishedVersion -or $publishedVersion -eq $null) {
             Write-Output "Publishing module $ModuleName version $repoVersion"
             try {
-              Publish-PSResource -Path $($Module.FullName) -Repository PSGallery -ApiKey ${{ secrets.API_KEY }} -ErrorAction Stop
+              Publish-PSResource -Path $($Module.FullName) -Repository PSGallery -ApiKey ${{ secrets.API_KEY }} -SkipDependenciesCheck -ErrorAction Stop
             } catch {
               Write-Error "Failed to publish module $ModuleName. Error: $_"
             }
