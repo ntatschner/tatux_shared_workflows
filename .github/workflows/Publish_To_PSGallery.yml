@@ -20,7 +20,19 @@ jobs:
         id: split
         run: |
           echo "module_paths_split=$(jq 'split(",")' -Rc <(echo '${{ inputs.module_paths }}'))" >> $GITHUB_OUTPUT
-  publish_module:
+
+  Test_Module:
+    strategy:
+      matrix:
+        module_path: ${{ fromJson(needs.SetUp.outputs.module_paths_split) }}
+    
+    uses: ntatschner/tatux_shared_workflows/.github/workflows/PS_Testing.yml@main
+    needs: SetUp
+    if: ${{ needs.SetUp.outputs.module_paths_split != null }}
+    with:
+      module_path: ${{ matrix.module_path }}
+    
+  Publish_Module:
     runs-on: windows-latest
     needs: SetUp
     if: ${{ needs.SetUp.outputs.module_paths_split != null }}

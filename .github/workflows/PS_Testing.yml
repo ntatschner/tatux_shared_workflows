@@ -6,10 +6,19 @@ on:
       module_path:
         type: string
         required: true
+    outputs:
+      tested_modules:
+        description: "The first output string"
+        value: 
 
 jobs:
-  PSScriptAnalyzer:
+  PowerShell_Testing:
     runs-on: windows-latest
+    outputs:
+      psscriptanalyzer_error: ${{ steps.ps_script_analyzer.outputs.psscriptanalyzer_error }}
+      pester_private_error: ${{ steps.pester.outputs.pester_private_error }}
+      pester_public_error: ${{ steps.pester.outputs.pester_public_error }}
+      tested_modules: ${{ steps.set_outputs.outputs.tested_modules }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -73,18 +82,32 @@ jobs:
 
       - name: Run Pester Tests
         if: steps.module_test.outcome == 'success'
+        id: pester
+        shell: pwsh
         run: |
             $ModulePath = Get-item -Path ${{ inputs.module_path }}
             $ModuleName = $ModulePath.Name
             Write-Output "Running Pester Tests for $ModuleName"
             Write-Output "Running Pester Tests for Public Functions"
-            Invoke-Pester -Path "$($ModulePath.FullName)\Public\Tests"
-            Write-Output "Running Pester Tests for Private Functions"
-            Invoke-Pester -Path "$($ModulePath.FullName)\Private\Tests"
-            
+            try {
+              $pesterConfig = $(New-PesterConfiguration).Exit = $true
+              Invoke-Pester -Path "$($ModulePath.FullName)\Public\Tests" -Configuration $pesterConfig
+              echo "pester_public_error=$false" >> $env:GITHUB_OUTPUT
+            } catch {
+              echo "pester_public_error=$true" >> $env:GITHUB_OUTPUT
+            }
+            try {
+              Write-Output "Running Pester Tests for Private Functions"
+              Invoke-Pester -Path "$($ModulePath.FullName)\Private\Tests" -Configuration $pesterConfig
+              echo "pester_private_error=$false" >> $env:GITHUB_OUTPUT
+            } catch {
+              echo "pester_private_error=$true" >> $env:GITHUB_OUTPUT
+                Write-Error "There was an error running Pester tests for $ModuleName"
+            }
 
       - name: Lint with PSScriptAnalyzer
         if: steps.module_test.outcome == 'success'
+        id: ps_script_analyzer
         shell: pwsh
         run: |
             $errors = @()
@@ -101,7 +124,14 @@ jobs:
             $errors   += $issues.Where({$_.Severity -eq 'Error'})
             $warnings += $issues.Where({$_.Severity -eq 'Warning'})
             if ($errors) {
+                echo "PSScriptAnalyzer_error=$true" >> $env:GITHUB_OUTPUT
                 Write-Error "There were $($errors.Count) errors and $($warnings.Count) warnings total." -ErrorAction Stop
             } else {
+                echo "PSScriptAnalyzer_error=$false" >> $env:GITHUB_OUTPUT
                 Write-Output "There were $($errors.Count) errors and $($warnings.Count) warnings total."
             }
+      - name: Set Outputs
+        if: steps.pester.outputs.pester_private_error == 'true' || steps.pester.outputs.pester_public_error == 'true' || steps.ps_script_analyzer.outputs.PSScriptAnalyzer_error == 'true'
+        id: set_outputs
+        run: |
+          echo "tested_modules=$true" >> $env:GITHUB_OUTPUT
