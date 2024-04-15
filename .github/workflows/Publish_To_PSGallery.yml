@@ -20,7 +20,7 @@ jobs:
         id: split
         run: |
           IFS=', ' read -r -a module_paths <<< "${{ inputs.module_paths }}"
-          echo "module_paths_split=$(echo "${module_paths[@]}" | jq -R -s -c 'split(" "))" >> $GITHUB_OUTPUT
+          echo "module_paths_split=$(echo "${module_paths[@]}" | jq -R -s -c 'split(" "))'"" >> $GITHUB_OUTPUT
   publish_module:
     runs-on: windows-latest
     needs: SetUp
