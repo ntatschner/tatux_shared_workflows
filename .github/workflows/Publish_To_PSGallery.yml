@@ -40,7 +40,7 @@ jobs:
         shell: pwsh
         run: |
           if (Test-Path -Path ${{ matrix.module_path }}) {
-            $modulePath = ${{ matrix.module_path }}
+            $modulePath = "${{ matrix.module_path }}"
             Write-Output "Module path: $modulePath exists"
             Write-Output "Testing if it has a .psd1 file"
             $psd1 = Get-ChildItem -Path $modulePath -Filter *.psd1
