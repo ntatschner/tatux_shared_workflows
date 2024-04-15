@@ -3,7 +3,7 @@ name: Pubish to PSGallery
 on:
   workflow_call:
     inputs:
-      module_path:
+      module_paths:
         type: string
         required: true
     secrets:  
@@ -14,13 +14,13 @@ jobs:
   SetUp:
     runs-on: windows-latest
     outputs:
-      module_path_split: ${{ steps.split.outputs.module_path_split }}
+      module_paths_split: ${{ steps.split.outputs.module_paths_split }}
     steps:
       - name: Split Module Paths
         id: split
         run: |
-          Write-Output "Input module path: ${{ inputs.module_path }}"
-          $modulePaths = ${{ inputs.module_path }} -split ','
+          Write-Output "Input module path: ${{ inputs.module_paths }}"
+          $modulePaths = ${{ inputs.module_paths }} -split ','
           if ($modulePaths -eq $null) {
             throw "No module paths provided"
           }
@@ -28,10 +28,10 @@ jobs:
   publish_module:
     runs-on: windows-latest
     needs: SetUp
-    if: ${{ needs.SetUp.outputs.module_path_split != null }}
+    if: ${{ needs.SetUp.outputs.module_paths_split != null }}
     strategy:
       matrix:
-        module_path: ${{ needs.SetUp.outputs.module_path_split }}
+        module_path: ${{ needs.SetUp.outputs.module_paths_split }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
