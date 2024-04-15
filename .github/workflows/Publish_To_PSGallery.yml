@@ -62,13 +62,14 @@ jobs:
             key: ${{ runner.os }}-PowershellTesting
 
       - name: Install required testing PowerShell modules
-        if: steps.cacher.outputs.cache-hit != 'true'
+        if: steps.cacher.outputs.cache-hit != 'true' && steps.test.outcome == 'success'
         shell: pwsh
         run: |
             Set-PSRepository PSGallery -InstallationPolicy Trusted
             Install-Module PSScriptAnalyzer -ErrorAction Stop
 
       - name: Install any required modules
+        if: steps.test.outcome == 'success'
         id: required_modules
         shell: pwsh
         run: |
@@ -85,7 +86,7 @@ jobs:
             }
 
       - name: Run Pester Tests
-        if: steps.module_test.outcome == 'success'
+        if: steps.required_modules.outcome == 'success'
         id: pester
         shell: pwsh
         run: |
@@ -110,7 +111,7 @@ jobs:
             }
 
       - name: Lint with PSScriptAnalyzer
-        if: steps.module_test.outcome == 'success'
+        if: steps.required_modules.outcome == 'success'
         id: ps_script_analyzer
         shell: pwsh
         run: |
@@ -137,7 +138,7 @@ jobs:
 
 
       - name: Version Test and Publish Modules
-        if: steps.test.outcome == 'success'
+        if: steps.required_modules.outcome == 'success'
         id: version
         run: |
           $Module = Get-Item -Path ${{ matrix.module_path }}
