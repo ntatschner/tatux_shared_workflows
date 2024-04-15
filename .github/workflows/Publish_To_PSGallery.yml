@@ -53,7 +53,86 @@ jobs:
             throw "Module path: ${{ matrix.module_path }} does not exist"
           }
 
+      - name: Setup PowerShell module cache
+        id: cacher
+        uses: actions/cache@v3
+        with:
+            path: "~/.local/share/powershell/Modules"
+            key: ${{ runner.os }}-PowershellTesting
 
+      - name: Install required testing PowerShell modules
+        if: steps.cacher.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+            Set-PSRepository PSGallery -InstallationPolicy Trusted
+            Install-Module PSScriptAnalyzer -ErrorAction Stop
+
+      - name: Install any required modules
+        id: required_modules
+        shell: pwsh
+        run: |
+            $ModulePath = Get-item -Path "${{ inputs.module_path }}"
+            $ModuleName = $ModulePath.Name
+            Write-Output "Installing any required modules for $ModuleName"
+            $RequiredModules = (Import-PowerShellDataFile -Path "$($ModulePath.FullName)\$($ModuleName).psd1").RequiredModules
+            if ($RequiredModules) {
+                foreach ($module in $RequiredModules) {
+                    Install-Module -Name $module.ModuleNameName -RequiredVersion $module.ModuleVersion -Force -ErrorAction Stop
+                }
+            } else {
+                Write-Output "No required modules found."
+            }
+
+      - name: Run Pester Tests
+        if: steps.module_test.outcome == 'success'
+        id: pester
+        shell: pwsh
+        run: |
+            $ModulePath = Get-item -Path ${{ inputs.module_path }}
+            $ModuleName = $ModulePath.Name
+            Write-Output "Running Pester Tests for $ModuleName"
+            Write-Output "Running Pester Tests for Public Functions"
+            try {
+              $pesterConfig = $(New-PesterConfiguration).Exit = $true
+              Invoke-Pester -Path "$($ModulePath.FullName)\Public\Tests" -Configuration $pesterConfig
+              echo "pester_public_error=$false" >> $env:GITHUB_OUTPUT
+            } catch {
+              echo "pester_public_error=$true" >> $env:GITHUB_OUTPUT
+            }
+            try {
+              Write-Output "Running Pester Tests for Private Functions"
+              Invoke-Pester -Path "$($ModulePath.FullName)\Private\Tests" -Configuration $pesterConfig
+              echo "pester_private_error=$false" >> $env:GITHUB_OUTPUT
+            } catch {
+              echo "pester_private_error=$true" >> $env:GITHUB_OUTPUT
+                Write-Error "There was an error running Pester tests for $ModuleName"
+            }
+
+      - name: Lint with PSScriptAnalyzer
+        if: steps.module_test.outcome == 'success'
+        id: ps_script_analyzer
+        shell: pwsh
+        run: |
+            $errors = @()
+            $warnings = @()
+            $ModulePath = Get-item -Path ${{ inputs.module_path }}
+            $ModuleName = $_.Name
+            Write-Output "Running PSScriptAnalyzer Tests for $ModuleName"
+            Write-Output "Running Tests for Public Functions"
+            Invoke-ScriptAnalyzer -Path "$($ModulePath.FullName)\Public\*.ps1" -Outvariable issues
+            $errors   += $issues.Where({$_.Severity -eq 'Error'})
+            $warnings += $issues.Where({$_.Severity -eq 'Warning'})
+            Write-Output "Running Pester Tests for Private Functions"
+            Invoke-ScriptAnalyzer -Path "$($ModulePath.FullName)\Private\*.ps1" -Outvariable issues
+            $errors   += $issues.Where({$_.Severity -eq 'Error'})
+            $warnings += $issues.Where({$_.Severity -eq 'Warning'})
+            if ($errors) {
+                echo "PSScriptAnalyzer_error=$true" >> $env:GITHUB_OUTPUT
+                Write-Error "There were $($errors.Count) errors and $($warnings.Count) warnings total." -ErrorAction Stop
+            } else {
+                echo "PSScriptAnalyzer_error=$false" >> $env:GITHUB_OUTPUT
+                Write-Output "There were $($errors.Count) errors and $($warnings.Count) warnings total."
+            }
 
 
       - name: Version Test and Publish Modules
