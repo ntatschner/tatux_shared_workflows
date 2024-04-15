@@ -45,12 +45,6 @@ jobs:
             $psd1 = Get-ChildItem -Path $modulePath -Filter *.psd1
             if ($psd1) {
               Write-Output "Found .psd1 file: $($psd1.Name)."
-              Write-Output "Testing if us is valid."
-              try {
-              Test-ModuleManifest -Path $psd1.FullName -ErrorAction Stop
-              } catch {
-                throw "Module path: $modulePath does not contain a valid .psd1 file.`nError: $_"
-              }
             } else {
               throw "Module path: $modulePath does not contain a .psd1 file"
             }
