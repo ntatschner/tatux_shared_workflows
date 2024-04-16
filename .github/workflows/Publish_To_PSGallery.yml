@@ -91,7 +91,7 @@ jobs:
         id: pester
         shell: pwsh
         run: |
-            $ModulePath = Get-item -Path ${{ matrix.module_path }}
+            $ModulePath = Get-item -Path "${{ matrix.module_path }}"
             $ModuleName = $ModulePath.Name
             Write-Output "Running Pester Tests for $ModuleName"
             Write-Output "Running Pester Tests for Public Functions"
@@ -118,7 +118,7 @@ jobs:
         run: |
             $errors = @()
             $warnings = @()
-            $ModulePath = Get-item -Path ${{ matrix.module_path }}
+            $ModulePath = Get-item -Path "${{ matrix.module_path }}"
             $ModuleName = $_.Name
             Write-Output "Running PSScriptAnalyzer Tests for $ModuleName"
             Write-Output "Running Tests for Public Functions"
