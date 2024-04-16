@@ -147,9 +147,9 @@ jobs:
         run: |
           $Module = Get-Item -Path ${{ matrix.module_path }}
           $ModuleName = $module.BaseName
-          $repoVersion = (Import-PowerShellDataFile -Path "$($Module.FullName)\$($Module.BaseName).psd1").ModuleVersion
+          [version]$repoVersion = (Import-PowerShellDataFile -Path "$($Module.FullName)\$($Module.BaseName).psd1").ModuleVersion
           try {
-            $publishedVersion = (Find-Module -Name $ModuleName -ErrorAction Stop).Version
+            [version]$publishedVersion = (Find-Module -Name $ModuleName -ErrorAction Stop).Version
           } catch {
             Write-Output "Module $ModuleName not found in PSGallery, creating new module version $repoVersion"
           }
