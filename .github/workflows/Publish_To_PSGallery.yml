@@ -86,31 +86,33 @@ jobs:
                 Write-Output "No required modules found."
             }
 
-      # - name: Run Pester Tests
-      #   if: steps.required_modules.outcome == 'success' || steps.required_modules.outcome == 'skipped'
-      #   id: pester
-      #   shell: pwsh
-      #   run: |
-      #       $ModulePath = Get-item -Path "${{ matrix.module_path }}"
-      #       $ModuleName = $ModulePath.Name
-      #       Write-Output "Running Pester Tests for $ModuleName"
-      #       Write-Output "Running Pester Tests for Public Functions"
-      #       $pesterConfig = $(New-PesterConfiguration)
-      #       $pesterConfig.Run.Exit = $true
-      #       try {
-      #           Invoke-Pester -Path "$($ModulePath.FullName)\Public\Tests" -Configuration $pesterConfig
-      #         echo "pester_public_error=$false" >> $env:GITHUB_OUTPUT
-      #       } catch {
-      #         echo "pester_public_error=$true" >> $env:GITHUB_OUTPUT
-      #       }
-      #       try {
-      #         Write-Output "Running Pester Tests for Private Functions"
-      #         Invoke-Pester -Path "$($ModulePath.FullName)\Private\Tests" -Configuration $pesterConfig
-      #         echo "pester_private_error=$false" >> $env:GITHUB_OUTPUT
-      #       } catch {
-      #         echo "pester_private_error=$true" >> $env:GITHUB_OUTPUT
-      #           Write-Error "There was an error running Pester tests for $ModuleName. Error:`n$_"
-      #       }
+      - name: Run Pester Tests
+        if: steps.required_modules.outcome == 'success' || steps.required_modules.outcome == 'skipped'
+        id: pester
+        shell: pwsh
+        run: |
+            $ModulePath = Get-item -Path "${{ matrix.module_path }}"
+            $ModuleName = $ModulePath.Name
+            Write-Output "Running Pester Tests for $ModuleName"
+            Write-Output "Running Pester Tests for Public Functions"
+            $pesterConfig = $(New-PesterConfiguration)
+            $pesterConfig.Run.Exit = $true
+            $pesterConfig.CodeCoverage.Path = "$($ModulePath.FullName)\Public\Tests"
+            try {
+                Invoke-Pester -Configuration $pesterConfig
+              echo "pester_public_error=$false" >> $env:GITHUB_OUTPUT
+            } catch {
+              echo "pester_public_error=$true" >> $env:GITHUB_OUTPUT
+            }
+            try {
+              Write-Output "Running Pester Tests for Private Functions"
+              $pesterConfig.CodeCoverage.Path = "$($ModulePath.FullName)\Private\Tests"
+              Invoke-Pester -Configuration $pesterConfig
+              echo "pester_private_error=$false" >> $env:GITHUB_OUTPUT
+            } catch {
+              echo "pester_private_error=$true" >> $env:GITHUB_OUTPUT
+                Write-Error "There was an error running Pester tests for $ModuleName. Error:`n$_"
+            }
 
       - name: Lint with PSScriptAnalyzer
         if: steps.required_modules.outcome == 'success'
