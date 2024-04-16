@@ -96,7 +96,7 @@ jobs:
             Write-Output "Running Pester Tests for $ModuleName"
             Write-Output "Running Pester Tests for Public Functions"
             $pesterConfig = $(New-PesterConfiguration)
-            $pesterConfig.Exit = $true
+            $pesterConfig.Run.Exit = $true
             try {
                 Invoke-Pester -Path "$($ModulePath.FullName)\Public\Tests" -Configuration $pesterConfig
               echo "pester_public_error=$false" >> $env:GITHUB_OUTPUT
