@@ -80,7 +80,11 @@ jobs:
             $RequiredModules = (Import-PowerShellDataFile -Path "$($ModulePath.FullName)\$($ModuleName).psd1").RequiredModules
             if ($RequiredModules) {
                 foreach ($module in $RequiredModules) {
-                    Install-Module -Name $module.ModuleName -RequiredVersion $module.ModuleVersion -Force -ErrorAction Stop
+                    if ($module.GetType().Name -eq 'String') {
+                      Install-Module -Name $module -Force -ErrorAction Stop
+                    } else {
+                      Install-Module -Name $module.ModuleName -RequiredVersion $module.ModuleVersion -Force -ErrorAction Stop
+                    }
                 }
             } else {
                 Write-Output "No required modules found."
