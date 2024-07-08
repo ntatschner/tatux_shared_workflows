@@ -57,7 +57,7 @@ jobs:
       - name: Setup PowerShell module cache
         if: steps.test.outcome == 'success'
         id: cacher
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
             path: "~/.local/share/powershell/Modules"
             key: ${{ runner.os }}-PowershellTesting
